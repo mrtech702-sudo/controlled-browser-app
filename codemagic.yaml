@@ -1,4 +1,51 @@
-str
-git add codemagic.yaml
-git commit -m 'Add first workflow'
-git push
+workflows:
+  android-workflow:
+    name: Controlled Browser Android
+    max_build_duration: 60
+    instance_type: mac_mini_m1
+    integrations:
+      app_store_connect: codemagic
+    environment:
+      android_signing:
+        - keystore_reference
+      groups:
+        - google_play
+      vars:
+        PACKAGE_NAME: "com.barnytech.controlled_browser"
+        GOOGLE_PLAY_TRACK: internal
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+    scripts:
+      - name: Set up local.properties
+        script: |
+          echo "flutter.sdk=$HOME/programs/flutter" > "$CM_BUILD_DIR/flutter-app/android/local.properties"
+      - name: Get Flutter packages
+        script: |
+          cd flutter-app
+          flutter packages pub get
+      - name: Flutter analyze
+        script: |
+          cd flutter-app
+          flutter analyze
+      - name: Flutter unit tests
+        script: |
+          cd flutter-app
+          flutter test
+        ignore_failure: true
+      - name: Build APK with Flutter
+        script: |
+          cd flutter-app
+          flutter build apk --release --build-name=1.0.$BUILD_NUMBER --build-number=$BUILD_NUMBER
+    artifacts:
+      - flutter-app/build/app/outputs/flutter-apk/*.apk
+      - flutter-app/build/app/outputs/bundle/**/*.aab
+      - /tmp/xcodebuild_logs/*.log
+      - flutter_drive.log
+    publishing:
+      email:
+        recipients:
+          - user@example.com
+        notify:
+          success: true
+          failure: false
