@@ -6,6 +6,7 @@ on:
     branches: [ main, master ]
   pull_request:
     branches: [ main, master ]
+  workflow_dispatch: # Allows manual trigger
 
 jobs:
   build:
@@ -16,7 +17,7 @@ jobs:
       uses: actions/checkout@v4
       
     - name: Setup Java JDK
-      uses: actions/setup-java@v3
+      uses: actions/setup-java@v4
       with:
         distribution: 'zulu'
         java-version: '17'
@@ -24,7 +25,7 @@ jobs:
     - name: Setup Flutter
       uses: subosito/flutter-action@v2
       with:
-        flutter-version: '3.16.0'
+        flutter-version: '3.19.0'
         channel: 'stable'
         
     - name: Get Flutter Dependencies
@@ -35,6 +36,37 @@ jobs:
       run: flutter doctor -v
       
     - name: Build APK (Debug)
+      working-directory: ./flutter-app
+      run: flutter build apk --debug
+      
+    - name: Build APK (Release)
+      working-directory: ./flutter-app
+      run: flutter build apk --release
+      
+    - name: Upload Debug APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: controlled-browser-debug
+        path: flutter-app/build/app/outputs/flutter-apk/app-debug.apk
+        
+    - name: Upload Release APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: controlled-browser-release
+        path: flutter-app/build/app/outputs/flutter-apk/app-release.apk
+        
+    - name: Create GitHub Release
+      if: github.ref == 'refs/heads/main'
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: v${{ github.run_number }}
+        name: Controlled Browser v${{ github.run_number }}
+        files: |
+          flutter-app/build/app/outputs/flutter-apk/app-debug.apk
+          flutter-app/build/app/outputs/flutter-apk/app-release.apk
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}    - name: Build APK (Debug)
       working-directory: ./flutter-app
       run: flutter build apk --debug
       
